@@ -5,7 +5,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 // --- Lightweight Interactive SVG Multi-Year Graph Component ---
 function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
-  // Generate multi-year curve points dynamically based on the selected horizon
   const years = parseInt(selectedHorizon) || 5;
   const dataPoints = useMemo(() => {
     const points = [];
@@ -15,7 +14,6 @@ function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
 
     for (let i = 0; i <= count; i++) {
       const t = i / 12;
-      // Exponential compounding curve with market variance
       const variance = 1 + (Math.sin(i * 0.8) * 0.02 * (i / count));
       const value = initialNav * Math.pow(1 + annualRate, t) * variance;
       points.push({
@@ -23,7 +21,6 @@ function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
         val: Number(value.toFixed(4))
       });
     }
-    // Make sure the last point aligns to the current NAV
     points[points.length - 1].val = nav;
     return points;
   }, [years, nav, initialNav]);
@@ -67,7 +64,6 @@ function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
           </linearGradient>
         </defs>
 
-        {/* Horizontal grid lines */}
         {[0, 0.5, 1].map((pct, idx) => {
           const yPos = padding + pct * (height - padding * 2);
           const gridVal = maxVal - pct * range;
@@ -81,13 +77,9 @@ function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
           );
         })}
 
-        {/* Gradient fill */}
         <polygon points={areaStr} fill="url(#chartGradient)" />
-
-        {/* Trend Polyline */}
         <polyline fill="none" stroke={themeColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={polylineStr} />
 
-        {/* Start and End Dots */}
         {coordinates.length > 0 && (
           <>
             <circle cx={coordinates[0].x} cy={coordinates[0].y} r="4" fill="#64748b" />
@@ -102,6 +94,12 @@ function MultiYearChart({ selectedHorizon, nav, initialNav = 10.0 }) {
 // --- Fund Card Component ---
 function FundCard({ fund, onClick }) {
   const isPositive = (fund.totalGrowthPct || 0) >= 0;
+
+  // Calculation for total overall money generated based on ₹10 Lakh standard ticket
+  const baseTicket = 1000000;
+  const unitsHeld = baseTicket / (fund.initialNav || 10.0);
+  const currentTotalValuation = unitsHeld * fund.currentNav;
+  const totalMoneyGenerated = currentTotalValuation - baseTicket;
 
   return (
     <div
@@ -156,8 +154,8 @@ function FundCard({ fund, onClick }) {
         </p>
       </div>
 
-      <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
           <div>
             <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
               Current Rate (NAV)
@@ -166,14 +164,24 @@ function FundCard({ fund, onClick }) {
               ₹{Number(fund.currentNav).toFixed(4)}
             </div>
           </div>
-
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
-              Total Made / Unit
+              Unit Gain
             </span>
-            <div style={{ fontSize: '1rem', fontWeight: 700, color: isPositive ? '#16a34a' : '#dc2626' }}>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isPositive ? '#16a34a' : '#dc2626' }}>
               {isPositive ? '+' : ''}₹{Number(fund.totalGainPerUnit).toFixed(4)}
             </div>
+          </div>
+        </div>
+
+        <div style={{ background: isPositive ? '#f0fdf4' : '#fef2f2', border: `1px solid ${isPositive ? '#bbf7d0' : '#fecaca'}`, borderRadius: '8px', padding: '8px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: isPositive ? '#15803d' : '#991b1b' }}>
+              Overall Money Generated (₹10L)
+            </span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isPositive ? '#166534' : '#b91c1c' }}>
+              {isPositive ? '+' : ''}₹{Math.round(totalMoneyGenerated).toLocaleString('en-IN')}
+            </span>
           </div>
         </div>
       </div>
@@ -184,18 +192,16 @@ function FundCard({ fund, onClick }) {
 // --- Fund Detail Modal / Deep Dive View ---
 function FundDetailModal({ fund, onClose }) {
   const [horizon, setHorizon] = useState('5Y');
-  const [pvAmount, setPvAmount] = useState(1000000); // 10Lakh standard ticket
+  const [pvAmount, setPvAmount] = useState(1000000);
 
   if (!fund) return null;
 
   const isPositive = (fund.totalGrowthPct || 0) >= 0;
   const years = parseInt(horizon) || 5;
 
-  // Annualized CAGR: ((End/Start)^(1/t)) - 1
   const annualCagr = Math.pow(fund.currentNav / fund.initialNav, 1 / years) - 1;
   const safeCagr = isNaN(annualCagr) || !isFinite(annualCagr) ? 0.12 : annualCagr;
 
-  // Future projection formula: FV = PV * (1 + r)^t
   const projectedFutureVal = pvAmount * Math.pow(1 + safeCagr, years);
   const projectedProfit = projectedFutureVal - pvAmount;
 
@@ -231,14 +237,15 @@ function FundDetailModal({ fund, onClose }) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
           <div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
                 {fund.code}
               </span>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{fund.plan} • {fund.option}</span>
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                {fund.plan} • {fund.option}
+              </span>
             </div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: '6px 0 2px' }}>
               {fund.company}
@@ -262,7 +269,6 @@ function FundDetailModal({ fund, onClose }) {
           </button>
         </div>
 
-        {/* Current Metrics Strip */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '10px', marginBottom: '20px' }}>
           <div>
             <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>CURRENT RATE (NAV)</span>
@@ -280,7 +286,6 @@ function FundDetailModal({ fund, onClose }) {
           </div>
         </div>
 
-        {/* Multi-Year Timeline Tabs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Interactive Performance Horizon</span>
           <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
@@ -305,10 +310,8 @@ function FundDetailModal({ fund, onClose }) {
           </div>
         </div>
 
-        {/* Chart View */}
         <MultiYearChart selectedHorizon={horizon} nav={fund.currentNav} initialNav={fund.initialNav || 10.0} />
 
-        {/* Future Calculation Module */}
         <div style={{ marginTop: '24px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
@@ -355,24 +358,28 @@ export default function Home() {
   const [selectedCompany, setSelectedCompany] = useState('ALL');
   const [activeFundModal, setActiveFundModal] = useState(null);
 
-  // States for live polling updates
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [pulse, setPulse] = useState(false);
 
   async function loadData() {
     try {
       const res = await fetch(`/api/sif?t=${Date.now()}`, { cache: 'no-store' });
+      
+      // If server returned 404 or 500 HTML page, don't execute res.json()
+      if (!res.ok) {
+        console.warn(`Server returned status: ${res.status}`);
+        return;
+      }
+
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setFunds(json.data);
-        setLastRefreshed(json.serverTime || new Date().toLocaleTimeString());
-        
-        // Brief pulse effect to indicate a live update
+        setLastRefreshed(new Date().toLocaleTimeString());
         setPulse(true);
         setTimeout(() => setPulse(false), 800);
       }
     } catch (err) {
-      console.error('Fetch error:', err);
+      console.warn('Polling fetch skipped:', err.message);
     } finally {
       setLoading(false);
     }
@@ -403,7 +410,6 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: '1240px', margin: '30px auto', padding: '0 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
@@ -414,14 +420,38 @@ export default function Home() {
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600 }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a' }}></span>
-            Real-Time Tracking Active
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: pulse ? '#0284c7' : '#16a34a',
+              transition: 'color 0.3s ease'
+            }}
+          >
+            <span
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: pulse ? '#0284c7' : '#16a34a',
+                transform: pulse ? 'scale(1.2)' : 'scale(1)',
+                transition: 'all 0.3s ease',
+                display: 'inline-block'
+              }}
+            ></span>
+            {pulse ? 'Fetching Live...' : 'Live Polling Active'}
           </span>
+          {lastRefreshed && (
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+              Updated: {lastRefreshed}
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Toolbar / Filters */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <input
           type="text"
@@ -441,7 +471,6 @@ export default function Home() {
         </select>
       </div>
 
-      {/* Fund Cards Grid */}
       {loading && funds.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
           Loading fund cards...
@@ -464,7 +493,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Deep-Dive Modal View on Click */}
       {activeFundModal && (
         <FundDetailModal fund={activeFundModal} onClose={() => setActiveFundModal(null)} />
       )}
