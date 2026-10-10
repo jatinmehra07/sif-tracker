@@ -81,4 +81,4 @@ async function handleSync(request) {
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-}s
+}
